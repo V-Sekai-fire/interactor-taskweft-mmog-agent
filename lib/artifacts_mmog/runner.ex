@@ -80,7 +80,8 @@ defmodule ArtifactsMmog.Runner do
     with {:ok, asi} <- ASI.serialize(replan_result),
          {:ok, critique} <- Reflect.reflect(if(asi["recovered"], do: 1.0, else: -1.0), asi),
          _ = IO.puts("[GEPA] critique: #{critique}"),
-         {:ok, evolved} <- Optimizer.evolve(instructions, if(asi["recovered"], do: 1.0, else: -1.0)) do
+         {:ok, evolved} <-
+           Optimizer.evolve(instructions, if(asi["recovered"], do: 1.0, else: -1.0)) do
       {:ok, evolved}
     end
   end
