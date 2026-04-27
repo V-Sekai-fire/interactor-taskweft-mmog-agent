@@ -7,6 +7,7 @@ defmodule ArtifactsMmog.Runner do
   """
 
   alias ArtifactsMmog.{Domain, Planner}
+  alias Taskweft.GEPA.{ASI, Reflect, Optimizer}
 
   @goals %{
     farm_copper: ["farm_resources", :copper_rocks],
@@ -73,6 +74,15 @@ defmodule ArtifactsMmog.Runner do
 
   defp step(char_name, goal) do
     Planner.run(char_name, build_tasks(goal, char_name))
+  end
+
+  def reflect_and_evolve(replan_result, instructions) do
+    with {:ok, asi} <- ASI.serialize(replan_result),
+         {:ok, critique} <- Reflect.reflect(if(asi["recovered"], do: 1.0, else: -1.0), asi),
+         _ = IO.puts("[GEPA] critique: #{critique}"),
+         {:ok, evolved} <- Optimizer.evolve(instructions, if(asi["recovered"], do: 1.0, else: -1.0)) do
+      {:ok, evolved}
+    end
   end
 
   defp build_tasks(goal, char_name) do

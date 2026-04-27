@@ -19,3 +19,11 @@ config :artifacts_mmog, ArtifactsMmog.Repo.Migration, priv: "priv/repo"
 # on the hot path. 16ms ~= 64 ticks/sec (round(1000/64), matching a
 # Godot-engine-scale tick rate rather than the previous 10/sec).
 config :artifacts_mmog, :tick_interval_ms, 16
+import Config
+
+config :instructor,
+  adapter: Instructor.Adapters.OpenAI,
+  openai: [
+    api_key: System.get_env("OPENROUTER_API_KEY", "local"),
+    api_url: "https://openrouter.ai/api"
+  ]
