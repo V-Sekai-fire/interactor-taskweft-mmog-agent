@@ -45,6 +45,7 @@ defmodule ArtifactsMmog.API do
   # --- My account ---
 
   def my_characters, do: get("/my/characters")
+  def character(name), do: get("/characters/#{name}")
   def my_logs(name, opts \\ []), do: get("/my/logs/#{name}", opts)
 
   @doc """
