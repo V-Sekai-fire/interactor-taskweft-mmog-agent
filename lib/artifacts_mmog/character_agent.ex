@@ -37,6 +37,23 @@ defmodule ArtifactsMmog.CharacterAgent do
   a detached process so it never blocks the tick timer; the agent keeps
   ticking (and would still notice a cooldown clearing) while a plan is
   being computed.
+
+  ## Known limitation: snapshot resume races the tick timer
+
+  At the default ~64/sec tick rate, the very first `:tick` after `init/1`
+  often fires -- and starts fresh planning (a real `Taskweft.plan/3` +
+  live API call) -- before the async snapshot-resume query (also fired
+  from `init/1`) has a realistic chance to land, especially over a network
+  round-trip to CockroachDB. The resume guard clause is deliberately
+  conservative (only applies a snapshot to a still-pristine, never-ticked
+  state) rather than risk clobbering real progress with stale data, so in
+  practice a restarted agent frequently re-plans from scratch instead of
+  resuming, even when a perfectly good snapshot existed. Confirmed live
+  against a real CockroachDB cluster, not assumed. Not fixed here --
+  a bounded initial grace period before the first planning attempt (long
+  enough for a typical same-network query, still short enough to keep
+  "realtime") would close most of this gap without reintroducing a hard
+  dependency on the database; left as follow-up work.
   """
 
   use GenServer

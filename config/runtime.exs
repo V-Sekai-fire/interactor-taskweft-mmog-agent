@@ -44,6 +44,14 @@ if System.get_env("CRDB_CA_CRT") do
       ArtifactsMmog.CrdbCertWriter.writer_ssl_opts!() ++
         [server_name_indication: String.to_charlist(crdb_host)]
 
+  # migration_lock: nil -- CockroachDB rejects Postgres's default migration
+  # locking outright ("LOCK TABLE ... IN SHARE UPDATE EXCLUSIVE MODE" is a
+  # syntax error on CRDB, confirmed via a real local migration run against
+  # CockroachDB, not by reading docs). CRDB has no session-level advisory
+  # locks to substitute (same underlying gap as Oban's LISTEN/NOTIFY --
+  # see ArtifactsMmog.Application) -- disabling the lock is the documented
+  # fix; it only matters for concurrent migration runs, which this project
+  # doesn't do.
   config :artifacts_mmog, ArtifactsMmog.Repo.Migration,
     hostname: crdb_host,
     port: 26_257,
@@ -54,6 +62,7 @@ if System.get_env("CRDB_CA_CRT") do
     parameters: [application_name: "artifacts_mmog_admin"],
     socket_options: [:inet6],
     ssl: true,
+    migration_lock: nil,
     ssl_opts:
       ArtifactsMmog.CrdbCertWriter.admin_ssl_opts!() ++
         [server_name_indication: String.to_charlist(crdb_host)]
@@ -66,5 +75,9 @@ else
       "postgres://postgres:postgres@localhost:5432/artifacts_mmog_#{config_env()}"
 
   config :artifacts_mmog, ArtifactsMmog.Repo, url: local_url, pool_size: 5
-  config :artifacts_mmog, ArtifactsMmog.Repo.Migration, url: local_url, pool_size: 2
+
+  config :artifacts_mmog, ArtifactsMmog.Repo.Migration,
+    url: local_url,
+    pool_size: 2,
+    migration_lock: nil
 end

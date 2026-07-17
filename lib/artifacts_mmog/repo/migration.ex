@@ -8,7 +8,16 @@ defmodule ArtifactsMmog.Repo.Migration do
 
   The app itself never uses this repo at runtime -- `ArtifactsMmog.Repo`
   (the `artifacts_mmog_writer` role, DML only) is what `ArtifactsMmog.Application`
-  starts and what Oban/the blackboard schemas read and write through.
+  starts and what the blackboard schemas read and write through.
+
+  Needs `config :artifacts_mmog, ArtifactsMmog.Repo.Migration, priv: "priv/repo"`
+  (see config.exs) -- Ecto derives a repo's default priv directory from its
+  own last module segment (`Migration` -> `priv/migration`), not from
+  `priv/repo/migrations` where the actual migration files live. Without
+  that override, `Ecto.Migrator.run/3` silently finds zero migrations and
+  reports "already up" against an empty database -- confirmed by running
+  it for real (twice: `priv:` is app-env config, not a `use Ecto.Repo,`
+  macro option, which the first fix attempt got wrong), not by reading docs.
   """
 
   use Ecto.Repo,

@@ -10,6 +10,26 @@ defmodule ArtifactsMmog.CharacterAgentTest do
   # injection, without hitting the real ArtifactsMMO API -- there's no HTTP
   # stubbing harness for ArtifactsMmog.API yet, so a real dispatch/planning
   # tick is not covered here. That's a real gap, flagged rather than faked.
+  #
+  # tick_interval_ms is overridden to something the real timer can never
+  # fire within a test's lifetime. Every test that wants tick behavior
+  # sends :tick manually. Without this, these tests raced the real timer:
+  # confirmed live (not guessed) that at the real default (16ms/~64Hz) the
+  # agent's own :tick frequently fires and starts planning before a test's
+  # explicit `send(pid, {:snapshot_loaded, ...})` is even sent, flipping
+  # `planning: true` first and making the resume guard clause reject the
+  # test's snapshot as "late" -- a real race, not just test flakiness (see
+  # the CharacterAgent moduledoc's "Known limitation" section).
+  setup_all do
+    original = Application.get_env(:artifacts_mmog, :tick_interval_ms)
+    Application.put_env(:artifacts_mmog, :tick_interval_ms, 60_000)
+
+    on_exit(fn ->
+      if original, do: Application.put_env(:artifacts_mmog, :tick_interval_ms, original)
+    end)
+
+    :ok
+  end
 
   setup do
     name = "test_char_#{System.unique_integer([:positive])}"

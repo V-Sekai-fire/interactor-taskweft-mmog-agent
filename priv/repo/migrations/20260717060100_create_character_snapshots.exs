@@ -4,6 +4,13 @@
 defmodule ArtifactsMmog.Repo.Migrations.CreateCharacterSnapshots do
   use Ecto.Migration
 
+  # CockroachDB auto-commits DDL statements (confirmed by running this for
+  # real: without this flag, the second migration in this run failed with
+  # "transaction is not started" once CRDB had already closed the wrapping
+  # transaction Ecto assumed it still controlled). Disabling Ecto's own DDL
+  # transaction wrapper matches what the database actually does.
+  @disable_ddl_transaction true
+
   # Schema kept in Essential Tuple Normal Form (Darwen, Date & Fagin, ICDT
   # 2012 -- see CITATION.cff): every attribute here is a scalar functionally
   # dependent on character_name alone. Repeating groups (inventory, the
