@@ -56,7 +56,15 @@ defmodule ArtifactsMmog.Planner do
     end
   end
 
-  defp dispatch(name, "a_move", [_char, zone_id]) do
+  @doc """
+  Dispatch a single decoded `[action, arg, ...]` step to the real API.
+
+  Public (unlike `execute/2`, which also sleeps out the cooldown in-process)
+  so a caller that wants to reschedule instead of blocking -- e.g.
+  `ArtifactsMmog.Workers.CharacterTick` -- can execute exactly one step and
+  read `cooldown_seconds/1` off the result itself.
+  """
+  def dispatch(name, "a_move", [_char, zone_id]) do
     zone_int = trunc_zone(zone_id)
 
     case Domain.zone_coords(zone_int) do
@@ -65,17 +73,17 @@ defmodule ArtifactsMmog.Planner do
     end
   end
 
-  defp dispatch(name, "a_gather", [_char | _]), do: API.gather(name)
-  defp dispatch(name, "a_fight", [_char | _]), do: API.fight(name)
-  defp dispatch(name, "a_rest", [_char | _]), do: API.rest(name)
-  defp dispatch(name, "a_accept_task", [_char | _]), do: API.accept_task(name)
-  defp dispatch(name, "a_complete_task", [_char | _]), do: API.complete_task(name)
+  def dispatch(name, "a_gather", [_char | _]), do: API.gather(name)
+  def dispatch(name, "a_fight", [_char | _]), do: API.fight(name)
+  def dispatch(name, "a_rest", [_char | _]), do: API.rest(name)
+  def dispatch(name, "a_accept_task", [_char | _]), do: API.accept_task(name)
+  def dispatch(name, "a_complete_task", [_char | _]), do: API.complete_task(name)
 
-  defp dispatch(name, "a_bank_deposit", [_char | _]) do
+  def dispatch(name, "a_bank_deposit", [_char | _]) do
     API.deposit_all(name)
   end
 
-  defp dispatch(name, action, args) do
+  def dispatch(name, action, args) do
     IO.puts("[Planner] unknown action: #{action}(#{inspect(args)})")
     %{"error" => "unknown action #{action}", "character" => name}
   end
@@ -84,9 +92,18 @@ defmodule ArtifactsMmog.Planner do
   defp trunc_zone(id) when is_float(id), do: trunc(id)
   defp trunc_zone(id) when is_binary(id), do: String.to_integer(id)
 
-  defp maybe_cooldown(%{"data" => %{"cooldown" => %{"remaining_seconds" => secs}}})
-       when is_number(secs) and secs > 0,
-       do: Process.sleep(trunc(secs * 1000))
+  @doc "Extracts `remaining_seconds` from an API result's cooldown, if any."
+  @spec cooldown_seconds(map()) :: number() | nil
+  def cooldown_seconds(%{"data" => %{"cooldown" => %{"remaining_seconds" => secs}}})
+      when is_number(secs) and secs > 0,
+      do: secs
 
-  defp maybe_cooldown(_), do: :ok
+  def cooldown_seconds(_), do: nil
+
+  defp maybe_cooldown(result) do
+    case cooldown_seconds(result) do
+      nil -> :ok
+      secs -> Process.sleep(trunc(secs * 1000))
+    end
+  end
 end

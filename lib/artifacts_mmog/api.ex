@@ -47,6 +47,12 @@ defmodule ArtifactsMmog.API do
   def my_characters, do: get("/my/characters")
   def my_logs(name, opts \\ []), do: get("/my/logs/#{name}", opts)
 
+  @doc """
+  Create a new character. `name` must be 3-12 chars, `^[a-zA-Z0-9_-]+$`.
+  `skin` is a required skin id (see the ArtifactsMMO docs for valid values).
+  """
+  def create_character(name, skin), do: post("/characters/create", %{name: name, skin: skin})
+
   # --- Character actions ---
 
   def move(name, x, y), do: post("/my/#{name}/action/move", %{x: x, y: y})
