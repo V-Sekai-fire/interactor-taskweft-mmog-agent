@@ -28,8 +28,7 @@ defmodule ArtifactsMmog.MixProject do
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:ecto_sql, "~> 3.12"},
-      {:postgrex, "~> 0.19"},
-      {:oban, "~> 2.19"}
+      {:postgrex, "~> 0.19"}
     ]
   end
 

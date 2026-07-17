@@ -5,14 +5,9 @@ import Config
 
 config :artifacts_mmog, ecto_repos: [ArtifactsMmog.Repo, ArtifactsMmog.Repo.Migration]
 
-# CockroachDB has no LISTEN/NOTIFY and no advisory locks, unlike Postgres --
-# both defaults Oban relies on. Do not drop these two lines when touching
-# this config; without them Oban either fails outright or silently falls
-# back to slow polling-only dispatch.
-config :artifacts_mmog, Oban,
-  engine: Oban.Engines.Basic,
-  notifier: Oban.Notifiers.PG,
-  peer: Oban.Peers.Global,
-  repo: ArtifactsMmog.Repo,
-  queues: [character_actions: 10],
-  plugins: [Oban.Plugins.Pruner]
+# How often each ArtifactsMmog.CharacterAgent ticks, in milliseconds. Dispatch
+# decisions (is the cooldown clear? is there a queued step?) happen entirely
+# in-memory on this timer -- the database is write-behind logging only, never
+# on the hot path. 16ms ~= 64 ticks/sec (round(1000/64), matching a
+# Godot-engine-scale tick rate rather than the previous 10/sec).
+config :artifacts_mmog, :tick_interval_ms, 16

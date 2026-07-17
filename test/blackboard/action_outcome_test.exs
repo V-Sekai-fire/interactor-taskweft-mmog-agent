@@ -10,7 +10,8 @@ defmodule ArtifactsMmog.Blackboard.ActionOutcomeTest do
     changeset =
       ActionOutcome.changeset(%ActionOutcome{}, %{
         character_name: "hero",
-        action: %{"action" => "a_fight", "args" => []},
+        action: "a_fight",
+        args: [],
         status: "ok"
       })
 
@@ -21,7 +22,7 @@ defmodule ArtifactsMmog.Blackboard.ActionOutcomeTest do
     changeset =
       ActionOutcome.changeset(%ActionOutcome{}, %{
         character_name: "hero",
-        action: %{},
+        action: "a_fight",
         status: "bogus"
       })
 
@@ -29,21 +30,30 @@ defmodule ArtifactsMmog.Blackboard.ActionOutcomeTest do
     assert %{status: ["is invalid"]} = errors_on(changeset)
   end
 
-  test "asi is optional and only meaningful on failure" do
+  test "reason is a plain scalar, only meaningful on failure" do
     changeset =
       ActionOutcome.changeset(%ActionOutcome{}, %{
         character_name: "hero",
-        action: %{"action" => "a_fight"},
+        action: "a_fight",
+        args: ["hero"],
         status: "failed",
-        asi: %{"reason" => "combat_loss", "monster" => "chicken"}
+        reason: "combat_loss"
       })
 
     assert changeset.valid?
+    assert Ecto.Changeset.get_change(changeset, :reason) == "combat_loss"
+  end
 
-    assert Ecto.Changeset.get_change(changeset, :asi) == %{
-             "reason" => "combat_loss",
-             "monster" => "chicken"
-           }
+  test "raw_response accepts the external API payload verbatim (the one deliberate jsonb exception)" do
+    changeset =
+      ActionOutcome.changeset(%ActionOutcome{}, %{
+        character_name: "hero",
+        action: "a_fight",
+        status: "failed",
+        raw_response: %{"error" => %{"code" => 499, "message" => "Cooldown active"}}
+      })
+
+    assert changeset.valid?
   end
 
   defp errors_on(changeset) do

@@ -3,29 +3,40 @@
 
 defmodule ArtifactsMmog.Blackboard.CharacterSnapshot do
   @moduledoc """
-  Persistent per-character state: last known live state, the active plan
-  (if any) and how far execution has gotten through it, and when the
-  character's cooldown clears.
+  Persistent per-character scalar state: the same fields
+  `ArtifactsMmog.Domain.build/2` reads off a live character map, plus how
+  far plan execution has gotten and when the cooldown clears.
 
-  Lets a restarted node resume a character via `Taskweft.replan/3` from
-  `plan_cursor` instead of throwing away in-flight progress and re-planning
-  from scratch.
+  Kept in Essential Tuple Normal Form (Darwen, Date & Fagin, ICDT 2012 --
+  see CITATION.cff): every field here is a scalar functionally dependent on
+  `character_name` alone. The inventory and the active plan are NOT
+  embedded here as jsonb -- they're `CharacterInventoryItem` and
+  `CharacterPlanStep`, each its own table with its own key.
   """
 
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias ArtifactsMmog.Blackboard.{CharacterInventoryItem, CharacterPlanStep}
+
   @primary_key {:character_name, :string, autogenerate: false}
   schema "character_snapshots" do
-    field(:last_known_state, :map, default: %{})
-    field(:active_plan, :map)
+    field(:hp, :integer)
+    field(:max_hp, :integer)
+    field(:x, :integer)
+    field(:y, :integer)
+    field(:task, :string)
+    field(:inventory_max_items, :integer)
     field(:plan_cursor, :integer, default: 0)
     field(:cooldown_expires_at, :utc_datetime_usec)
+
+    has_many(:inventory_items, CharacterInventoryItem, foreign_key: :character_name)
+    has_many(:plan_steps, CharacterPlanStep, foreign_key: :character_name)
 
     timestamps(type: :utc_datetime_usec)
   end
 
-  @fields ~w(character_name last_known_state active_plan plan_cursor cooldown_expires_at)a
+  @fields ~w(character_name hp max_hp x y task inventory_max_items plan_cursor cooldown_expires_at)a
 
   def changeset(snapshot, attrs) do
     snapshot

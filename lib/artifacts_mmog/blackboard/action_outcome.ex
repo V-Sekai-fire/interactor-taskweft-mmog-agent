@@ -6,10 +6,14 @@ defmodule ArtifactsMmog.Blackboard.ActionOutcome do
   Append-only log of every action the orchestrator has executed against the
   real ArtifactsMMO API.
 
-  A failed outcome (e.g. a lost fight -- genuinely nondeterministic, not a
-  bug) carries `asi` ("Actionable Side Information"): what went wrong, for
-  a future reflective/GEPA-style pass to read. This is real persistent
-  memory the bare `ArtifactsMmog.Runner` loop never had.
+  `action`/`args`/`status`/`reason` are real scalar/array attributes, kept
+  in Essential Tuple Normal Form (Darwen, Date & Fagin, ICDT 2012 -- see
+  CITATION.cff), not an opaque jsonb blob. `raw_response` is the one
+  deliberate exception: it's ArtifactsMMO's own API payload, whose shape is
+  dictated entirely by that external system, not by this domain's data
+  model -- normalizing someone else's wire format has no essential-tuple
+  meaning here, so it's kept verbatim, purely for debugging/audit, and
+  never read back by the agent itself.
   """
 
   use Ecto.Schema
@@ -17,15 +21,16 @@ defmodule ArtifactsMmog.Blackboard.ActionOutcome do
 
   schema "action_outcomes" do
     field(:character_name, :string)
-    field(:action, :map)
+    field(:action, :string)
+    field(:args, {:array, :string}, default: [])
     field(:status, :string)
-    field(:http_response, :map)
-    field(:asi, :map)
+    field(:reason, :string)
+    field(:raw_response, :map)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end
 
-  @fields ~w(character_name action status http_response asi)a
+  @fields ~w(character_name action args status reason raw_response)a
   @statuses ~w(ok failed unexpected)
 
   def changeset(outcome, attrs) do

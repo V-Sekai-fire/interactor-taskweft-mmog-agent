@@ -39,11 +39,13 @@ defmodule ArtifactsMmog.Planner do
     {:ok, results}
   end
 
-  # ---------------------------------------------------------------------------
-  # Private
-  # ---------------------------------------------------------------------------
+  @doc """
+  Look up `name` in the account's character list.
 
-  defp fetch_char(name) do
+  Public (unlike the rest of this section) so `ArtifactsMmog.CharacterAgent`
+  can fetch fresh live state on its own tick loop without duplicating this.
+  """
+  def fetch_char(name) do
     case API.my_characters() do
       %{"data" => chars} when is_list(chars) ->
         case Enum.find(chars, &(&1["name"] == name)) do
@@ -60,9 +62,9 @@ defmodule ArtifactsMmog.Planner do
   Dispatch a single decoded `[action, arg, ...]` step to the real API.
 
   Public (unlike `execute/2`, which also sleeps out the cooldown in-process)
-  so a caller that wants to reschedule instead of blocking -- e.g.
-  `ArtifactsMmog.Workers.CharacterTick` -- can execute exactly one step and
-  read `cooldown_seconds/1` off the result itself.
+  so a caller that wants to check the cooldown itself instead of blocking --
+  e.g. `ArtifactsMmog.CharacterAgent`'s tick loop -- can execute exactly one
+  step and read `cooldown_seconds/1` off the result.
   """
   def dispatch(name, "a_move", [_char, zone_id]) do
     zone_int = trunc_zone(zone_id)

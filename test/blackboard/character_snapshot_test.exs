@@ -11,20 +11,22 @@ defmodule ArtifactsMmog.Blackboard.CharacterSnapshotTest do
     assert changeset.valid?
   end
 
-  test "carries the active plan and cursor across a rebuild" do
-    plan = [["a_move", "hero", 1], ["a_gather", "hero"]]
-
+  test "carries scalar character fields and the plan cursor" do
     changeset =
       CharacterSnapshot.changeset(%CharacterSnapshot{}, %{
         character_name: "hero",
-        active_plan: %{"steps" => plan},
-        plan_cursor: 1,
-        last_known_state: %{"hp" => 90}
+        hp: 90,
+        max_hp: 100,
+        x: 2,
+        y: -4,
+        task: "",
+        inventory_max_items: 100,
+        plan_cursor: 1
       })
 
     assert changeset.valid?
+    assert Ecto.Changeset.get_change(changeset, :hp) == 90
     assert Ecto.Changeset.get_change(changeset, :plan_cursor) == 1
-    assert Ecto.Changeset.get_change(changeset, :active_plan) == %{"steps" => plan}
   end
 
   test "rejects a missing character_name" do
