@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+# Multi-stage build for the taskweft-mmog-agent orchestrator.
+# Stage 1 compiles taskweft_nif's C++20 NIF (via elixir_make, a real build
+# dependency, not just an Elixir one) plus an Elixir prod release. Stage 2
+# is a slim runtime. Mirrors taskweft/taskweft's deploy/Containerfile
+# (archived, but the pattern is sound) -- one build stage, one runtime
+# stage, non-root user.
+
+ARG ELIXIR_IMAGE=docker.io/hexpm/elixir:1.18.4-erlang-27.3.4.14-debian-bookworm-20260713-slim
+ARG RUNTIME_IMAGE=docker.io/debian:bookworm-slim
+
+# ---------- build ----------
+FROM ${ELIXIR_IMAGE} AS build
+
+# build-essential/g++ for taskweft_nif's C++20 NIF; curl for rebar3.
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends build-essential ca-certificates make curl \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV MIX_ENV=prod
+
+RUN mix local.hex --force
+RUN curl -fsSL -o /usr/local/bin/rebar3 https://github.com/erlang/rebar3/releases/latest/download/rebar3 \
+  && chmod +x /usr/local/bin/rebar3 \
+  && mix local.rebar rebar3 /usr/local/bin/rebar3 --force
+
+WORKDIR /app
+COPY mix.exs mix.lock ./
+RUN mix deps.get --only prod
+RUN mix deps.compile
+
+COPY config config
+COPY lib lib
+COPY priv priv
+RUN mix compile
+RUN mix release
+
+# ---------- runtime ----------
+FROM ${RUNTIME_IMAGE} AS app
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV MIX_ENV=prod \
+    LANG=C.UTF-8
+
+WORKDIR /app
+COPY --from=build /app/_build/prod/rel/artifacts_mmog ./
+
+RUN useradd --create-home app && chown -R app:app /app
+USER app
+
+CMD ["/app/bin/artifacts_mmog", "start"]

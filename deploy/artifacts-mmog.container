@@ -1,0 +1,39 @@
+# taskweft-mmog-agent orchestrator -- local cluster.
+#
+# No CRDB_CA_CRT is set here (that's the production/Fly-secrets mTLS path,
+# see ArtifactsMmog.CrdbCertWriter) -- DATABASE_URL alone routes
+# config/runtime.exs's local-dev fallback branch at the CRDB container
+# above over a plain, unencrypted connection, matching CRDB's insecure mode.
+#
+# ARTIFACTS_MMOG_KEY is deliberately NOT set here -- create
+# ~/.config/artifacts-mmog/secrets.env (chmod 600, never in git) with:
+#   ARTIFACTS_MMOG_KEY=<your bearer token>
+# before starting this unit -- Quadlet's EnvironmentFile=, unlike systemd's
+# own, has no "-" optional-file prefix (confirmed: it's silently treated as
+# a literal path character, producing a broken concatenated path and a
+# start failure with no useful error) so the file must exist first.
+#
+# Install: cp deploy/artifacts-mmog.container ~/.config/containers/systemd/
+#          systemctl --user daemon-reload && systemctl --user start artifacts-mmog
+#
+# Build the image first: podman build -t localhost/artifacts-mmog:latest -f deploy/Containerfile .
+# Run migrations once CRDB + the database exist: see deploy/README.md.
+
+[Unit]
+Description=taskweft-mmog-agent orchestrator (local cluster)
+After=crdb.service artifacts-mmog-network.service
+Requires=crdb.service artifacts-mmog-network.service
+
+[Container]
+Image=localhost/artifacts-mmog:latest
+ContainerName=artifacts-mmog
+Network=artifacts-mmog.network
+Environment=DATABASE_URL=postgres://root@crdb:26257/artifacts_mmog_dev?sslmode=disable
+EnvironmentFile=%h/.config/artifacts-mmog/secrets.env
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

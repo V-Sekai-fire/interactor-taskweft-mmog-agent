@@ -1,0 +1,29 @@
+# CockroachDB, single-node, insecure -- local dev cluster only. Production
+# uses a real mTLS-secured cluster (see multiplayer-fabric-crdb's README for
+# that pattern); this is deliberately not that -- insecure mode avoids
+# generating a cert chain for a single host reachable only from its own
+# Podman network.
+#
+# Install: cp deploy/crdb.container ~/.config/containers/systemd/
+#          systemctl --user daemon-reload && systemctl --user start crdb
+
+[Unit]
+Description=CockroachDB (single-node, insecure) for the local taskweft-mmog-agent cluster
+After=artifacts-mmog-network.service
+Requires=artifacts-mmog-network.service
+
+[Container]
+Image=docker.io/cockroachdb/cockroach:latest
+ContainerName=crdb
+Network=artifacts-mmog.network
+Exec=start-single-node --insecure --store=/cockroach/cockroach-data
+Volume=crdb-data.volume:/cockroach/cockroach-data
+PublishPort=26257:26257
+PublishPort=8080:8080
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target
