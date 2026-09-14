@@ -1,0 +1,10 @@
+# Shared network for the local cluster (crdb + artifacts-mmog talk to each
+# other by container name -- Podman's aardvark-dns resolves `crdb` on this
+# network).
+#
+# Install: cp deploy/*.network ~/.config/containers/systemd/
+
+[Unit]
+Description=Private network for the taskweft-mmog-agent local cluster
+
+[Network]
