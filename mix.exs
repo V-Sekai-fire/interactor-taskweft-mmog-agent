@@ -25,7 +25,8 @@ defmodule ArtifactsMmog.MixProject do
   defp deps do
     [
       {:taskweft,
-       github: "V-Sekai-fire/multiplayer-fabric-taskweft", branch: "feat/gepa-reflective-cycle"},
+       github: "V-Sekai-fire/multiplayer-fabric-taskweft",
+       ref: "daefcb361f3f44ddb3c6137a828f2505b910af26"},
       {:ex_mcp, github: "azmaveth/ex_mcp"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
