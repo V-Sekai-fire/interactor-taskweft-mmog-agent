@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: >-
+  If you use this project, please cite it using the metadata
+  below. The references list credits prior work referenced by
+  the project's design decisions.
+title: "taskweft-mmog-agent"
+type: software
+version: "0.1.0"
+license: MIT
+repository-code: "https://github.com/taskweft/taskweft-mmog-agent"
+url: "https://github.com/taskweft/taskweft-mmog-agent"
+abstract: >-
+  ArtifactsMMO Multiplayer Fabric agent -- HTN planning via
+  taskweft_nif, a realtime per-character tick-loop orchestrator,
+  and an ex_ratatui TUI.
+authors:
+  - family-names: Lee
+    given-names: "K. S. Ernest (iFire)"
+    email: ernest.lee@chibifire.com
+references:
+  - type: conference-paper
+    title: "A Normal Form for Preventing Redundant Tuples in Relational Databases"
+    authors:
+      - family-names: Darwen
+        given-names: Hugh
+      - family-names: Date
+        given-names: "C. J."
+      - family-names: Fagin
+        given-names: Ronald
+    conference:
+      name: "15th International Conference on Database Theory (ICDT 2012)"
+    doi: "10.1145/2274576.2274589"
+    url: "https://openproceedings.org/2012/conf/icdt/DarwenDF12.pdf"
+    year: 2012
+    notes: >-
+      Verified — introduces Essential Tuple Normal Form (ETNF), the normal
+      form the persistent-blackboard schema (character_snapshots,
+      character_inventory_items, character_plan_steps, action_outcomes)
+      is designed against — see the ArtifactsMmog.Blackboard.* moduledocs.
