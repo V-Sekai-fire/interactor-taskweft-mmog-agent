@@ -13,7 +13,7 @@ mix test
 mix artifacts_mmog.run <character> <goal>
 ```
 
-`mix artifacts_mmog.goals` lists the goals, and `mix artifacts_mmog.key set` stores the game's API token in the OS keychain.
+`mix artifacts_mmog.goals` lists the goals, and `mix artifacts_mmog.key set` stores the game's API token in the macOS keychain. On other hosts, set `ARTIFACTS_MMOG_KEY` instead.
 
 ## Licence
 
