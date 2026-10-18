@@ -4,13 +4,13 @@
 # Local cluster (deploy/)
 
 Brings up the whole realtime orchestrator locally under Podman Quadlet:
-CockroachDB (single-node, insecure) plus the `artifacts-mmog` release,
-talking to each other over a private Podman network by container name.
+one FoundationDB process plus the `artifacts-mmog` release, talking to each
+other over a private Podman network by container name. The release keeps
+its SQLite database in FoundationDB through datasource-store's `weftfdb`
+extension, which the image builds.
 
-This is a **local dev cluster**, not a production deployment recipe --
-insecure CRDB, no mTLS, no Fly.io. Production would reuse
-`ArtifactsMmog.CrdbCertWriter`'s mTLS path (see its moduledoc), which this
-setup deliberately doesn't exercise.
+This is a **local dev cluster**, not a production deployment recipe: one
+FoundationDB process, no TLS.
 
 ## Bring it up
 
@@ -30,14 +30,17 @@ systemctl --user daemon-reload
 echo "ARTIFACTS_MMOG_KEY=<your bearer token>" > ~/.config/artifacts-mmog/secrets.env
 chmod 600 ~/.config/artifacts-mmog/secrets.env
 
-# 4. Start CockroachDB first, create the database it doesn't create itself.
-systemctl --user start crdb
-until podman exec crdb ./cockroach sql --insecure -e 'SELECT 1' >/dev/null 2>&1; do sleep 1; done
-podman exec crdb ./cockroach sql --insecure -e 'CREATE DATABASE IF NOT EXISTS artifacts_mmog_dev;'
+# 4. Start FoundationDB, configure a new database once, and copy its
+#    cluster file out for the orchestrator.
+systemctl --user start fdb
+podman exec fdb fdbcli --exec "configure new single ssd" --timeout 30
+until podman exec fdb fdbcli --exec "status minimal" --timeout 5 | grep -q available; do sleep 1; done
+podman cp fdb:/var/fdb/fdb.cluster ~/.config/artifacts-mmog/fdb.cluster
 
 # 5. Run migrations (one-shot, against the running image).
 podman run --rm --network systemd-artifacts-mmog \
-  -e DATABASE_URL=postgres://root@crdb:26257/artifacts_mmog_dev?sslmode=disable \
+  -v ~/.config/artifacts-mmog/fdb.cluster:/etc/foundationdb/fdb.cluster:ro \
+  -e ARTIFACTS_MMOG_DATABASE='file:artifacts_mmog_dev.v1?vfs=weft_fdb' \
   localhost/artifacts-mmog:latest /app/bin/artifacts_mmog eval "ArtifactsMmog.Release.migrate()"
 
 # 6. Start the orchestrator.
@@ -47,8 +50,8 @@ systemctl --user start artifacts-mmog
 ## Verify
 
 ```sh
-systemctl --user status crdb artifacts-mmog
-podman exec crdb ./cockroach sql --insecure -e 'SHOW TABLES FROM artifacts_mmog_dev;'
+systemctl --user status fdb artifacts-mmog
+podman exec fdb fdbcli --exec "status minimal"
 podman logs -f systemd-artifacts-mmog
 ```
 
@@ -64,19 +67,18 @@ podman exec -it systemd-artifacts-mmog /app/bin/artifacts_mmog remote
 ArtifactsMmog.CharacterSupervisor.start_character("YourCharName", [["rest_at_bank", "YourCharName"]])
 ```
 
-Watch it persist real progress:
+Watch it persist real progress from the remote shell:
 
-```sh
-podman exec crdb ./cockroach sql --insecure -e \
-  'SELECT character_name, plan_cursor, cooldown_expires_at FROM artifacts_mmog_dev.character_snapshots;'
+```elixir
+ArtifactsMmog.Repo.all(ArtifactsMmog.Blackboard.CharacterSnapshot)
 ```
 
 ## Tear down
 
 ```sh
-systemctl --user stop artifacts-mmog crdb
-systemctl --user disable artifacts-mmog crdb
-rm ~/.config/containers/systemd/{artifacts-mmog.container,crdb.container,artifacts-mmog.network,crdb-data.volume}
+systemctl --user stop artifacts-mmog fdb
+systemctl --user disable artifacts-mmog fdb
+rm ~/.config/containers/systemd/{artifacts-mmog.container,fdb.container,artifacts-mmog.network,fdb-data.volume}
 systemctl --user daemon-reload
-podman volume rm systemd-crdb-data   # drops persisted data
+podman volume rm systemd-fdb-data   # drops persisted data
 ```

@@ -9,16 +9,10 @@ defmodule ArtifactsMmog.Application do
   start -- they're pure in-memory OTP primitives, no database required, so
   `ArtifactsMmog.CharacterAgent` tick loops work in plain local dev/test too.
 
-  `ArtifactsMmog.Repo` only starts when a database is actually configured
-  -- either `CRDB_CA_CRT` (the deployed release's mTLS path, see
-  `ArtifactsMmog.CrdbCertWriter`) or `DATABASE_URL` (the local/insecure-CRDB
-  fallback, see `config/runtime.exs`) is present. Agents check
-  `Process.whereis(Repo)` before persisting and simply skip it when absent
-  -- the database is write-behind logging, never required for an agent to
-  run correctly. Checking `CRDB_CA_CRT` alone was a real bug, caught by
-  actually running the local Quadlet cluster (which uses `DATABASE_URL`,
-  not `CRDB_CA_CRT`): the Repo silently never started at all, so every
-  persistence write/read was a quiet no-op with no error anywhere.
+  `ArtifactsMmog.Repo` only starts when `ARTIFACTS_MMOG_DATABASE` is set
+  (see `config/runtime.exs`). Agents check `Process.whereis(Repo)` before
+  persisting and skip it when absent -- the database is write-behind
+  logging, never required for an agent to run correctly.
   """
 
   use Application
@@ -36,5 +30,5 @@ defmodule ArtifactsMmog.Application do
   end
 
   defp database_configured?,
-    do: System.get_env("CRDB_CA_CRT") != nil or System.get_env("DATABASE_URL") != nil
+    do: System.get_env("ARTIFACTS_MMOG_DATABASE") != nil
 end

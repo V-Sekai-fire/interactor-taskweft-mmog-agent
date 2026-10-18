@@ -1,9 +1,8 @@
 # taskweft-mmog-agent orchestrator -- local cluster.
 #
-# No CRDB_CA_CRT is set here (that's the production/Fly-secrets mTLS path,
-# see ArtifactsMmog.CrdbCertWriter) -- DATABASE_URL alone routes
-# config/runtime.exs's local-dev fallback branch at the CRDB container
-# above over a plain, unencrypted connection, matching CRDB's insecure mode.
+# The database is SQLite whose pages live in the fdb container
+# (ARTIFACTS_MMOG_DATABASE with vfs=weft_fdb). The cluster file is copied
+# out of the fdb container once; see deploy/README.md.
 #
 # ARTIFACTS_MMOG_KEY is deliberately NOT set here -- create
 # ~/.config/artifacts-mmog/secrets.env (chmod 600, never in git) with:
@@ -17,18 +16,19 @@
 #          systemctl --user daemon-reload && systemctl --user start artifacts-mmog
 #
 # Build the image first: podman build -t localhost/artifacts-mmog:latest -f deploy/Containerfile .
-# Run migrations once CRDB + the database exist: see deploy/README.md.
+# Run migrations once FoundationDB is configured: see deploy/README.md.
 
 [Unit]
 Description=taskweft-mmog-agent orchestrator (local cluster)
-After=crdb.service artifacts-mmog-network.service
-Requires=crdb.service artifacts-mmog-network.service
+After=fdb.service artifacts-mmog-network.service
+Requires=fdb.service artifacts-mmog-network.service
 
 [Container]
 Image=localhost/artifacts-mmog:latest
 ContainerName=artifacts-mmog
 Network=artifacts-mmog.network
-Environment=DATABASE_URL=postgres://root@crdb:26257/artifacts_mmog_dev?sslmode=disable
+Environment=ARTIFACTS_MMOG_DATABASE=file:artifacts_mmog_dev.v1?vfs=weft_fdb
+Volume=%h/.config/artifacts-mmog/fdb.cluster:/etc/foundationdb/fdb.cluster:ro
 EnvironmentFile=%h/.config/artifacts-mmog/secrets.env
 
 [Service]

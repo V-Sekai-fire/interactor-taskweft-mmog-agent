@@ -8,14 +8,26 @@
 
 ARG ELIXIR_IMAGE=docker.io/hexpm/elixir:1.18.4-erlang-27.3.4.14-debian-bookworm-20260713-slim
 ARG RUNTIME_IMAGE=docker.io/debian:bookworm-slim
+ARG FDB_VERSION=7.3.63
+ARG STORE_REF=bf5d552f5dee0fc871b474c5362ad782a49e89c7
 
 # ---------- build ----------
 FROM ${ELIXIR_IMAGE} AS build
 
-# build-essential/g++ for taskweft_nif's C++20 NIF; curl for rebar3.
+# build-essential/g++ for taskweft_nif's C++20 NIF; curl for rebar3;
+# cmake, git and the FoundationDB client for datasource-store's weftfdb extension.
+ARG FDB_VERSION
+ARG STORE_REF
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends build-essential ca-certificates make curl \
+     cmake git libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL -o /tmp/fdb.deb https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb \
+  && dpkg -i /tmp/fdb.deb && rm /tmp/fdb.deb
+RUN git clone -q https://github.com/V-Sekai-fire/datasource-store /store \
+  && git -C /store checkout -q ${STORE_REF} \
+  && cmake -S /store -B /store/build -DCMAKE_BUILD_TYPE=Release \
+  && cmake --build /store/build --target weftfdb
 
 ENV MIX_ENV=prod
 
@@ -38,15 +50,21 @@ RUN mix release
 # ---------- runtime ----------
 FROM ${RUNTIME_IMAGE} AS app
 
+ARG FDB_VERSION
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates \
+  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates curl \
+  && curl -fsSL -o /tmp/fdb.deb https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb \
+  && dpkg -i /tmp/fdb.deb && rm /tmp/fdb.deb \
   && rm -rf /var/lib/apt/lists/*
 
 ENV MIX_ENV=prod \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    ARTIFACTS_MMOG_WEFTFDB_EXTENSION=/app/lib/weftfdb \
+    WEFT_FDB_CLUSTER_FILE=/etc/foundationdb/fdb.cluster
 
 WORKDIR /app
 COPY --from=build /app/_build/prod/rel/artifacts_mmog ./
+COPY --from=build /store/build/weftfdb.so /app/lib/weftfdb.so
 
 RUN useradd --create-home app && chown -R app:app /app
 USER app
