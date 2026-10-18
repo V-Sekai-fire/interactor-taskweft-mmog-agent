@@ -17,11 +17,10 @@ defmodule ArtifactsMmog.BlackboardTest do
     previous = Application.get_env(:artifacts_mmog, Repo, [])
     Application.put_env(:artifacts_mmog, Repo, Keyword.merge(previous, database: database))
 
-    {:ok, pid} = Repo.start_link()
+    start_supervised!(Repo)
     Ecto.Migrator.run(Repo, :up, all: true, log: false)
 
     on_exit(fn ->
-      if Process.alive?(pid), do: Supervisor.stop(pid)
       Application.put_env(:artifacts_mmog, Repo, previous)
       File.rm_rf!(dir)
     end)
