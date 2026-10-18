@@ -1,4 +1,4 @@
-# Persistent storage for the local CockroachDB single-node instance.
+# Persistent storage for the local FoundationDB process.
 #
 # Install: cp deploy/*.volume ~/.config/containers/systemd/
 

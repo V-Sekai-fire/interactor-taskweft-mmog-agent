@@ -1,0 +1,24 @@
+# FoundationDB, one process, local dev cluster only. The orchestrator keeps
+# its SQLite database in it through datasource-store's weft_fdb VFS.
+#
+# Install: cp deploy/fdb.container ~/.config/containers/systemd/
+#          systemctl --user daemon-reload && systemctl --user start fdb
+
+[Unit]
+Description=FoundationDB (one process) for the local taskweft-mmog-agent cluster
+After=artifacts-mmog-network.service
+Requires=artifacts-mmog-network.service
+
+[Container]
+Image=docker.io/foundationdb/foundationdb:7.3.63
+ContainerName=fdb
+Network=artifacts-mmog.network
+Environment=FDB_NETWORKING_MODE=container
+Volume=fdb-data.volume:/var/fdb/data
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

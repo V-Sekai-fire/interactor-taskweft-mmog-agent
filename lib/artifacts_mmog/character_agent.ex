@@ -13,7 +13,7 @@ defmodule ArtifactsMmog.CharacterAgent do
   tick interval of its cooldown clearing, not after any external
   scheduler's poll delay.
 
-  CockroachDB (when configured) is treated as an **unreliable environmental
+  The database (when configured) is treated as an **unreliable environmental
   query, and as an async backup** -- never a source the agent depends on to
   make progress:
 
@@ -44,12 +44,13 @@ defmodule ArtifactsMmog.CharacterAgent do
   often fires -- and starts fresh planning (a real `Taskweft.plan/3` +
   live API call) -- before the async snapshot-resume query (also fired
   from `init/1`) has a realistic chance to land, especially over a network
-  round-trip to CockroachDB. The resume guard clause is deliberately
+  round-trip to the database. The resume guard clause is deliberately
   conservative (only applies a snapshot to a still-pristine, never-ticked
   state) rather than risk clobbering real progress with stale data, so in
   practice a restarted agent frequently re-plans from scratch instead of
-  resuming, even when a perfectly good snapshot existed. Confirmed live
-  against a real CockroachDB cluster, not assumed. Not fixed here --
+  resuming, even when a perfectly good snapshot existed. Measured live
+  against CockroachDB, before the move to SQLite on FoundationDB; not
+  measured since. Not fixed here --
   a bounded initial grace period before the first planning attempt (long
   enough for a typical same-network query, still short enough to keep
   "realtime") would close most of this gap without reintroducing a hard
@@ -167,7 +168,7 @@ defmodule ArtifactsMmog.CharacterAgent do
      %{state | active_plan: plan, plan_cursor: snap.plan_cursor, cooldown_until: cooldown_until}}
   end
 
-  # Either no snapshot existed, the query failed (CRDB unreachable -- fine,
+  # Either no snapshot existed, the query failed (database unreachable -- fine,
   # it's just an unreliable environmental query), or the agent already moved
   # on since boot. Nothing to do either way.
   def handle_info({:snapshot_loaded, _}, state), do: {:noreply, state}
@@ -263,7 +264,7 @@ defmodule ArtifactsMmog.CharacterAgent do
   end
 
   # ---------------------------------------------------------------------------
-  # Persistence -- CockroachDB as an unreliable environmental query and an
+  # Persistence -- the database as an unreliable environmental query and an
   # async backup. Every read and write here is fire-and-forget from the
   # tick loop's perspective and swallows its own errors; nothing in this
   # section is allowed to affect whether an agent can make progress. Kept
